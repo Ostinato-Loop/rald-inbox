@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Dry-run build
+        run: npx wrangler deploy --dry-run --outdir /tmp/rald-inbox-dry
+        env:
+          CLOUDFLARE_API_TOKEN: dry-run-no-token-needed
