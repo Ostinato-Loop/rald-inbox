@@ -1,0 +1,20 @@
+{
+  "name": "rald-inbox",
+  "version": "1.0.0",
+  "description": "RALD Unified Inbox — inbox.rald.cloud",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250525.0",
+    "typescript": "^5.9.0",
+    "wrangler": "^4.16.0"
+  }
+}
