@@ -1,0 +1,14 @@
+name = "rald-inbox"
+main = "src/index.ts"
+compatibility_date = "2025-06-02"
+workers_dev = false
+
+[env.production]
+routes = [{ pattern = "inbox.rald.cloud/*", zone_name = "rald.cloud" }]
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_REAL_KV_ID"
+
+[triggers]
+crons = ["*/10 * * * *"]
