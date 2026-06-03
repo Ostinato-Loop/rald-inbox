@@ -17,9 +17,12 @@ zone_name = "rald.cloud"
 binding = "RATE_LIMIT_KV"
 id = "REPLACE_WITH_RATE_LIMIT_KV_ID"
 
-[triggers]
-crons = ["*/10 * * * *"]
-
 [observability]
 enabled = true
 head_sampling_rate = 1
+
+# Cron trigger disabled — register manually via Cloudflare dashboard if needed:
+# Scheduled Functions > rald-inbox > Add Cron Trigger > */10 * * * *
+
+# Secrets pushed by deploy.yml via wrangler secret put:
+#   SUPABASE_URL (org), SUPABASE_SERVICE_ROLE_KEY (org), RALD_JWT_SECRET
