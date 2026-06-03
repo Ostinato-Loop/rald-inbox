@@ -12,7 +12,7 @@ conversations.get("/", async (c) => {
   const sb = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_ROLE_KEY);
   const workspaceId = c.get("workspaceId");
   const user = c.get("user");
-  const { view = "all", status, priority, assigned_to, tag, page = "1", limit = "20" } = c.req.query();
+  const { view = "all", status, priority, assigned_to, tag: _tag, page = "1", limit = "20" } = c.req.query();
   const p = Math.max(1, parseInt(page)), l = Math.min(100, parseInt(limit));
 
   let query = sb.from("conversations")
