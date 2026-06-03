@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { createClient } from "@supabase/supabase-js";
 import { AppContext, authMiddleware, workspaceMiddleware } from "../lib/middleware";
 import { computeSLAStatus } from "../lib/sla";
-import { writeAuditLog } from "../lib/audit";
 
 const sla = new Hono<AppContext>();
 sla.use("*", authMiddleware, workspaceMiddleware);
