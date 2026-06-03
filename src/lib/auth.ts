@@ -14,8 +14,7 @@ export async function verifyJwt(token: string, secret: string): Promise<JWTPaylo
     const keyData = encoder.encode(secret);
     const key = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
     const data = encoder.encode(`${parts[0]}.${parts[1]}`);
-    const sig = Uint8Array.from(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-    // decode sig from part[2]
+    // decode signature from part[2]
     const sigPart = parts[2].replace(/-/g, "+").replace(/_/g, "/");
     const padded = sigPart + "=".repeat((4 - sigPart.length % 4) % 4);
     const sigBytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0));
