@@ -18,18 +18,13 @@ crons = ["*/10 * * * *"]
 enabled = true
 head_sampling_rate = 1
 
-# Secrets — set via: wrangler secret put <NAME>
-# Required:
-#   SUPABASE_URL
-#   SUPABASE_SERVICE_ROLE_KEY
-#   RALD_JWT_SECRET
-# Optional:
-#   NOTIFICATION_SERVICE_URL    — defaults to https://notification.rald.cloud
-#   SEARCH_SERVICE_URL          — defaults to https://search.rald.cloud
-
 [env.production]
 name = "rald-inbox"
-vars = { ENVIRONMENT = "production" }
+
+[env.production.vars]
+ENVIRONMENT = "production"
+NOTIFICATION_SERVICE_URL = "https://notification.rald.cloud"
+SEARCH_SERVICE_URL = "https://search.rald.cloud"
 
 [[env.production.routes]]
 pattern = "inbox.rald.cloud/*"
@@ -37,4 +32,4 @@ zone_name = "rald.cloud"
 
 [[env.production.kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_PRODUCTION_KV_ID"
+id = "REPLACE_WITH_RATE_LIMIT_KV_ID"
