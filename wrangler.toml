@@ -15,7 +15,7 @@ zone_name = "rald.cloud"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_RATE_LIMIT_KV_ID"
+id = "be8b3854b50c4f9aac8d91345e955466"
 
 [observability]
 enabled = true
