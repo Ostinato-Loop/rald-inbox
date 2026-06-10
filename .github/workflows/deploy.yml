@@ -66,6 +66,14 @@ jobs:
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "FATAL: SUPABASE_SERVICE_ROLE_KEY not set" && exit 1; fi
           echo "$SUPABASE_SERVICE_ROLE_KEY" | npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --name rald-inbox
           echo "SUPABASE_SERVICE_ROLE_KEY pushed to rald-inbox"
+
+      - name: Push SUPABASE_URL to worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          if [ -n "$SUPABASE_URL" ]; then echo "$SUPABASE_URL" | npx wrangler secret put SUPABASE_URL --name rald-inbox && echo 'SUPABASE_URL pushed'; else echo 'WARNING: SUPABASE_URL not set'; fi
       - name: Push RALD_JWT_SECRET to worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
