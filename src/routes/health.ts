@@ -1,11 +1,11 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { AppContext } from "../lib/middleware";
 import { createClient } from "@supabase/supabase-js";
 
 const health = new Hono<AppContext>();
 
 // Standard health endpoints — all three respond identically (alias coverage)
-const liveHandler = (c: Parameters<typeof health.get>[1]) =>
+const liveHandler = (c: Context<AppContext>) =>
   c.json({ status: "ok", service: "rald-inbox", timestamp: new Date().toISOString() });
 
 health.get("/health",      liveHandler);
