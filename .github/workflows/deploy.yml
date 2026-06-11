@@ -103,3 +103,16 @@ jobs:
             echo "$RALD_JWT_SECRET" | npx wrangler secret put RALD_JWT_SECRET --name rald-inbox
             echo "RALD_JWT_SECRET pushed to rald-inbox"
           fi
+
+      - name: Post-deploy smoke test
+        run: |
+          sleep 5
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" https://inbox.rald.cloud/health || echo "000")
+          echo "inbox.rald.cloud/health → HTTP $STATUS"
+          if [ "$STATUS" = "200" ]; then echo "SMOKE TEST PASSED"; else echo "WARNING: HTTP $STATUS (non-fatal)"; fi
+        continue-on-error: true
+
+      - name: Record deployment audit
+        if: always()
+        run: |
+          echo "AUDIT: service=rald-inbox commit=${{ github.sha }} actor=${{ github.actor }} ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) status=${{ job.status }}"
