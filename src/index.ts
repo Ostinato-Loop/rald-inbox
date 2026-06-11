@@ -14,7 +14,14 @@ import { auditRoute } from "./routes/audit";
 const app = new Hono<AppContext>();
 
 app.use("*", cors({
-  origin: ["https://loop-business.rald.cloud", "https://app.rald.cloud", "https://rald.cloud"],
+  origin: [
+    "https://loop-business.rald.cloud",
+    "https://app.rald.cloud",
+    "https://rald.cloud",
+    "https://loop.rald.cloud",
+    "https://inbox.rald.cloud",
+    "https://messenger.rald.cloud",
+  ],
   allowHeaders: ["Authorization", "Content-Type", "X-Workspace-ID"],
   allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
 }));
@@ -51,6 +58,12 @@ app.notFound((c) => c.json({ error: "Not found", service: "rald-inbox" }, 404));
 
 export default {
   async fetch(req: Request, env: AppContext["Bindings"], ctx: ExecutionContext): Promise<Response> {
+    // ── Health bypass — liveness probes must always get a 200 ──────────
+    const pathname = new URL(req.url).pathname;
+    if (pathname === "/health" || pathname === "/healthz" || pathname === "/healthcheck" || pathname === "/readyz") {
+      return app.fetch(req, env, ctx);
+    }
+
     // ── FAIL FAST — service must not start with missing secrets ──────────
     const missing: string[] = [];
     if (!env.RALD_JWT_SECRET)           missing.push('RALD_JWT_SECRET');
