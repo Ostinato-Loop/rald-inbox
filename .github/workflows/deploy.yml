@@ -1,1 +1,105 @@
+name: Deploy
 
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-rald-inbox
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare Workers (inbox.rald.cloud)
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Resolve KV namespace ID via Cloudflare API
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node << 'JSEOF'
+          const fs = require('fs');
+          const h = { 'Authorization': `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`, 'Content-Type': 'application/json' };
+          const base = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/storage/kv/namespaces`;
+          async function listAll() { const r = await fetch(`${base}?per_page=100`, { headers: h }); const d = await r.json(); if (!d.success) throw new Error(JSON.stringify(d.errors)); return d.result; }
+          async function resolveId(title) {
+            const all = await listAll();
+            const e = all.find(n => n.title === title);
+            if (e) { console.log(`  [existing] ${title}`); return e.id; }
+            const r = await fetch(base, { method: 'POST', headers: h, body: JSON.stringify({ title }) });
+            const d = await r.json();
+            if (!d.success) { const retry = (await listAll()).find(n => n.title === title); if (retry) return retry.id; throw new Error(JSON.stringify(d.errors)); }
+            console.log(`  [created]  ${title}`); return d.result.id;
+          }
+          (async () => {
+            const RATE_LIMIT_KV = await resolveId('rald-inbox-rate-limit');
+            let toml = fs.readFileSync('wrangler.toml', 'utf8');
+            toml = toml.replace('REPLACE_WITH_RATE_LIMIT_KV_ID', RATE_LIMIT_KV);
+            fs.writeFileSync('wrangler.toml', toml);
+            console.log('wrangler.toml patched.');
+          })().catch(e => { console.error(e); process.exit(1); });
+          JSEOF
+      - name: Deploy rald-inbox Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Ensure inbox.rald.cloud DNS record exists
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node -e "
+          const h={'Authorization':'Bearer '+process.env.CLOUDFLARE_API_TOKEN,'Content-Type':'application/json'};
+          (async()=>{
+            const z=await fetch('https://api.cloudflare.com/client/v4/zones?name=rald.cloud',{headers:h}).then(r=>r.json());
+            const zid=z.result?.[0]?.id; if(!zid){console.log('zone not found');return;}
+            const ex=await fetch('https://api.cloudflare.com/client/v4/zones/'+zid+'/dns_records?name=inbox.rald.cloud',{headers:h}).then(r=>r.json());
+            if(ex.result?.length){console.log('inbox DNS exists');return;}
+            const r=await fetch('https://api.cloudflare.com/client/v4/zones/'+zid+'/dns_records',{method:'POST',headers:h,body:JSON.stringify({type:'AAAA',name:'inbox',content:'100::',proxied:true})}).then(r=>r.json());
+            console.log(r.success?'Created inbox.rald.cloud AAAA 100::':'DNS error:'+JSON.stringify(r.errors));
+          })().catch(e=>console.error('[WARN]',e.message));
+          "
+      - name: Push SUPABASE_SERVICE_ROLE_KEY to worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "FATAL: SUPABASE_SERVICE_ROLE_KEY not set" && exit 1; fi
+          echo "$SUPABASE_SERVICE_ROLE_KEY" | npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY --name rald-inbox
+          echo "SUPABASE_SERVICE_ROLE_KEY pushed to rald-inbox"
+
+      - name: Push SUPABASE_URL to worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          if [ -n "$SUPABASE_URL" ]; then echo "$SUPABASE_URL" | npx wrangler secret put SUPABASE_URL --name rald-inbox && echo 'SUPABASE_URL pushed'; else echo 'WARNING: SUPABASE_URL not set'; fi
+      - name: Push RALD_JWT_SECRET to worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RALD_JWT_SECRET: ${{ secrets.RALD_JWT_SECRET }}
+        run: |
+          if [ -z "$RALD_JWT_SECRET" ]; then
+            echo "WARNING: RALD_JWT_SECRET not set in GitHub secrets — add it as an org-level secret to complete setup"
+          else
+            echo "$RALD_JWT_SECRET" | npx wrangler secret put RALD_JWT_SECRET --name rald-inbox
+            echo "RALD_JWT_SECRET pushed to rald-inbox"
+          fi
