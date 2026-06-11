@@ -4,7 +4,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const health = new Hono<AppContext>();
 
-health.get("/healthz", (c) => c.json({ status: "ok", service: "rald-inbox", timestamp: new Date().toISOString() }));
+// Standard health endpoints — all three respond identically (alias coverage)
+const liveHandler = (c: Parameters<typeof health.get>[1]) =>
+  c.json({ status: "ok", service: "rald-inbox", timestamp: new Date().toISOString() });
+
+health.get("/health",      liveHandler);
+health.get("/healthz",     liveHandler);
+health.get("/healthcheck", liveHandler);
 
 health.get("/readyz", async (c) => {
   const checks: Record<string, string> = {};
